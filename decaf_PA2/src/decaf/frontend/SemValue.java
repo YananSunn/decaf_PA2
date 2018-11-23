@@ -11,6 +11,7 @@ import decaf.tree.Tree.LValue;
 import decaf.tree.Tree.TopLevel;
 import decaf.tree.Tree.VarDef;
 import decaf.tree.Tree.TypeLiteral;
+import decaf.tree.Tree.VarBind;
 import decaf.utils.MiscUtils;
 
 public class SemValue {
@@ -57,6 +58,8 @@ public class SemValue {
 	public Expr expr;
 
 	public LValue lvalue;
+	
+	public VarBind varBind;
 
 	/**
 	 * 创建一个关键字的语义值

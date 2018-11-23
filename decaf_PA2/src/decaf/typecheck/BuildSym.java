@@ -4,9 +4,11 @@ import java.util.Iterator;
 
 import decaf.Driver;
 import decaf.tree.Tree;
+import decaf.tree.Tree.Sealed;
 import decaf.error.BadArrElementError;
 import decaf.error.BadInheritanceError;
 import decaf.error.BadOverrideError;
+import decaf.error.BadSealedInherError;
 import decaf.error.BadVarTypeError;
 import decaf.error.ClassNotFoundError;
 import decaf.error.DecafError;
@@ -47,6 +49,10 @@ public class BuildSym extends Tree.Visitor {
 		table.open(program.globalScope);
 		for (Tree.ClassDef cd : program.classes) {
 			Class c = new Class(cd.name, cd.parent, cd.getLocation());
+			boolean isSealed = cd instanceof Sealed;
+			if(isSealed) {
+				c.setSealed(true);
+			}
 			Class earlier = table.lookupClass(cd.name);
 			if (earlier != null) {
 				issueError(new DeclConflictError(cd.getLocation(), cd.name,
@@ -66,6 +72,9 @@ public class BuildSym extends Tree.Visitor {
 			if (calcOrder(c) <= calcOrder(c.getParent())) {
 				issueError(new BadInheritanceError(cd.getLocation()));
 				c.dettachParent();
+			}
+			if(cd.parent != null && c.getParent().isSealed() == true) {
+				issueError(new BadSealedInherError(cd.getLocation()));
 			}
 		}
 
@@ -102,6 +111,15 @@ public class BuildSym extends Tree.Visitor {
 		table.close();
 	}
 
+	public void visitSealed(Tree.Sealed sealed) {
+		table.open(sealed.symbol.getAssociatedScope());
+		for (Tree f : sealed.fields) {
+			f.accept(this);
+		}
+		table.close();
+	}
+	
+	
 	@Override
 	public void visitVarDef(Tree.VarDef varDef) {
 		varDef.type.accept(this);

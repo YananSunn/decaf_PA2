@@ -15,6 +15,8 @@ import decaf.error.BadLengthError;
 import decaf.error.BadNewArrayLength;
 import decaf.error.BadPrintArgError;
 import decaf.error.BadReturnTypeError;
+import decaf.error.BadScopyArgError;
+import decaf.error.BadScopySrcError;
 import decaf.error.BadTestExpr;
 import decaf.error.BreakOutOfLoopError;
 import decaf.error.ClassNotFoundError;
@@ -572,6 +574,41 @@ public class TypeCheck extends Tree.Visitor {
 		}
 	}
 
+	
+	
+	public void visitSCopyExpr(Tree.SCopyExpr sCopyExpr)
+    {
+        sCopyExpr.expr.accept(this);
+        Symbol identSymbol = table.lookup(sCopyExpr.ident, true);
+        if (identSymbol == null)
+        {
+            issueError(new UndeclVarError(sCopyExpr.getLocation(), sCopyExpr.ident));
+            if(sCopyExpr.expr.type.isClassType() == false) {
+            	issueError(new BadScopyArgError(sCopyExpr.expr.getLocation(), "src", sCopyExpr.expr.type.toString()));
+            }
+        }
+        else {
+        	Type identType = table.lookup(sCopyExpr.ident, true).getType();
+        	if(identType.isClassType() == false) {
+        		issueError(new BadScopyArgError(sCopyExpr.getLocation(), "dst", identType.toString()));
+        		if(sCopyExpr.expr.type.isClassType() == false) {
+                	issueError(new BadScopyArgError(sCopyExpr.expr.getLocation(), "src", sCopyExpr.expr.type.toString()));
+                }
+        	}
+        	else {
+        		if(!identType.equal(sCopyExpr.expr.type)) {
+        			issueError(new BadScopySrcError(sCopyExpr.getLocation(), identType.toString(), sCopyExpr.expr.type.toString()));
+        		}
+        	}
+        }
+    }
+	
+	
+	
+	
+	
+	
+	
 	private void issueError(DecafError error) {
 		Driver.getDriver().issueError(error);
 	}

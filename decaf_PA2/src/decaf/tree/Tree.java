@@ -13,6 +13,24 @@ import decaf.type.*;
 import decaf.scope.*;
 import decaf.symbol.*;
 import decaf.symbol.Class;
+import decaf.tree.Tree.AccessArray;
+import decaf.tree.Tree.ArrayConstant;
+import decaf.tree.Tree.ClassDef;
+import decaf.tree.Tree.CompArray;
+import decaf.tree.Tree.DefaultArray;
+import decaf.tree.Tree.Expr;
+import decaf.tree.Tree.ForeachArray;
+import decaf.tree.Tree.Guarded;
+import decaf.tree.Tree.IfSubStmt;
+import decaf.tree.Tree.JointArray;
+import decaf.tree.Tree.LValue;
+import decaf.tree.Tree.NewSameArray;
+import decaf.tree.Tree.SCopyExpr;
+import decaf.tree.Tree.Sealed;
+import decaf.tree.Tree.TypeLiteral;
+import decaf.tree.Tree.Var;
+import decaf.tree.Tree.VarBind;
+import decaf.tree.Tree.Visitor;
 import decaf.utils.IndentPrintWriter;
 import decaf.utils.MiscUtils;
 
@@ -285,6 +303,22 @@ public abstract class Tree {
     public static final int READLINEEXPR = READINTEXPR + 1;
     public static final int PRINT = READLINEEXPR + 1;
     
+    
+    public static final int SCOPYEXPR = PRINT + 1;
+    public static final int SEALED = SCOPYEXPR + 1;
+    public static final int GUARDED = SEALED + 1;
+    public static final int IFSUBSTMT = GUARDED + 1;
+    public static final int VARSTMT = IFSUBSTMT + 1;
+    public static final int ARRAYCONSTANT = VARSTMT + 1;
+    public static final int NEWSAMEARRAY = ARRAYCONSTANT + 1;
+    public static final int JOINTARRAY = NEWSAMEARRAY + 1;
+    public static final int ACCESSARRAY = JOINTARRAY + 1;
+    public static final int DEFAULTARRAY = ACCESSARRAY + 1;
+    public static final int COMPARRAY = DEFAULTARRAY + 1;
+    public static final int FOREACHARRAY = COMPARRAY + 1;
+    public static final int VARBIND = FOREACHARRAY + 1;
+    
+    
     /**
      * Tags for Literal and TypeLiteral
      */
@@ -292,6 +326,9 @@ public abstract class Tree {
     public static final int INT = VOID + 1; 
     public static final int BOOL = INT + 1; 
     public static final int STRING = BOOL + 1; 
+    
+    
+
 
 
     public Location loc;
@@ -1329,6 +1366,386 @@ public abstract class Tree {
     		elementType.printTo(pw);
     	}
     }
+    
+    
+public static class VarBind extends Tree{
+    	
+    	public TypeLiteral type;
+    	public String name;
+    	
+    	public VarBind(TypeLiteral type, String name, Location loc) {
+    		super(VARBIND, loc);
+    		this.type = type;
+    		this.name = name;
+    	}
+    	
+    	@Override
+        public void accept(Visitor v) {
+            v.visitVarBind(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.print("varbind " + name + " ");
+    		if(type != null) {
+    			type.printTo(pw);
+    			pw.println();
+    		}
+    		else {
+    			pw.println("var");
+    		}
+    	}
+    }
+
+
+    public static class SCopyExpr extends Tree {
+
+    	public String ident;
+    	public Expr expr;
+
+    	public SCopyExpr(String ident, Expr expr, Location loc) {
+    		super(SCOPYEXPR, loc);
+    		this.ident = ident;
+    		this.expr = expr;
+    	}
+
+    	@Override
+    	public void accept(Visitor visitor) {
+    		visitor.visitSCopyExpr(this);
+    	}
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("scopy");
+    		pw.incIndent();
+    		pw.println(ident);
+    		expr.printTo(pw);
+    		pw.decIndent();
+    		
+    	}
+   }
+    
+    public static class Sealed extends ClassDef {
+
+        public Sealed(String name, String parent, List<Tree> fields,
+    			Location loc) {
+        	super(name, parent, fields, loc);
+        }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitSealed(this);
+        }
+        
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("sealed class " + name + " "
+    				+ (parent != null ? parent : "<empty>"));
+    	}
+   }
+    
+    
+    public static class Guarded extends Tree
+    {
+         public List<Tree> subStmt;
+        public Tree last;
+         public Guarded(List<Tree> subStmt, Tree last, Location loc)
+        {
+            super(GUARDED, loc);
+            this.subStmt = subStmt;
+            this.last = last;
+        }
+         @Override
+        public void accept(Visitor v)
+        {
+            v.visitGuarded(this);
+        }
+         @Override
+        public void printTo(IndentPrintWriter pw)
+        {
+            pw.println("guarded");
+            pw.incIndent();
+            if(subStmt != null) {
+            	for (Tree stmt : subStmt)
+                    stmt.printTo(pw);
+                last.printTo(pw);
+            }
+            else {
+            	pw.println("<empty>");
+            }
+            pw.decIndent();
+        }
+    }
+     /**
+     * A Guard
+     */
+    public static class IfSubStmt extends Tree
+    {
+         public Expr expr;
+        public Tree stmt;
+         public IfSubStmt(Expr expr, Tree stmt, Location loc)
+        {
+            super(IFSUBSTMT, loc);
+            this.expr = expr;
+            this.stmt = stmt;
+        }
+         @Override
+        public void accept(Visitor v)
+        {
+            v.visitIfSubStmt(this);
+        }
+         @Override
+        public void printTo(IndentPrintWriter pw)
+        {
+            pw.println("guard");
+            pw.incIndent();
+            expr.printTo(pw);
+            stmt.printTo(pw);
+            pw.decIndent();
+        }
+    }
+    
+    
+    public static class Var extends LValue {
+    	public String name;
+
+        public Var(String name, Location loc) {
+            super(VARSTMT, loc);
+    		this.name = name;
+        }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitVar(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("var " + name);
+    	}
+    }
+    
+    
+    public static class ArrayConstant extends Expr {
+
+		public List<Expr> constantStmt;
+	    public ArrayConstant(List<Expr> constantStmt, Location loc){
+	        super(ARRAYCONSTANT, loc);
+	        this.constantStmt = constantStmt;
+	    }
+	    
+	     @Override
+	    public void accept(Visitor v){
+	        v.visitArrayConstant(this);
+	    }
+	     
+	     @Override
+	    public void printTo(IndentPrintWriter pw){
+	        pw.println("array const");
+	        pw.incIndent();
+	        if(constantStmt != null){
+	        	for (Expr stmt : constantStmt)        	
+	        		stmt.printTo(pw);	    	        
+	        }
+	        else {
+	        	pw.println("<empty>");
+	        }
+	        pw.decIndent();
+	    }
+    }
+    
+    public static class NewSameArray extends Expr {
+
+    	public Expr newsamearray;
+    	public Expr expr;
+
+        public NewSameArray(Expr expr, Expr newsamearray, Location loc) {
+            super(NEWSAMEARRAY, loc);
+    		this.expr = expr;
+    		this.newsamearray = newsamearray;
+       }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitNewSameArray(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("array repeat");
+    		pw.incIndent();
+    		expr.printTo(pw);
+    		newsamearray.printTo(pw);
+    		pw.decIndent();
+    	}
+    }
+    
+    public static class JointArray extends Expr {
+
+    	public Expr jointarray;
+    	public Expr expr;
+
+        public JointArray(Expr expr, Expr jointarray, Location loc) {
+            super(JOINTARRAY, loc);
+    		this.expr = expr;
+    		this.jointarray = jointarray;
+       }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitJointArray(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("array concat");
+    		pw.incIndent();
+    		expr.printTo(pw);
+    		jointarray.printTo(pw);
+    		pw.decIndent();
+    	}
+    }
+    
+    public static class AccessArray extends Expr {
+
+    	public Expr expr1;
+    	public Expr expr2;
+	    public Expr expr3;
+
+        public AccessArray(Expr expr1, Expr expr2, Expr expr3, Location loc) {
+            super(ACCESSARRAY, loc);
+    		this.expr1 = expr1;
+			this.expr2 = expr2;
+			this.expr3 = expr3;
+       }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitAccessArray(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("arrref");
+    		pw.incIndent();
+    		expr1.printTo(pw);
+    		pw.println("range");
+    		pw.incIndent();
+    		expr2.printTo(pw);
+    		expr3.printTo(pw);
+    		pw.decIndent();
+    		pw.decIndent();
+    	}
+    }
+    
+    public static class DefaultArray extends Expr {
+
+    	public Expr expr1;
+    	public Expr expr2;
+	    public Expr expr3;
+
+        public DefaultArray(Expr expr1, Expr expr2, Expr expr3, Location loc) {
+            super(DEFAULTARRAY, loc);
+    		this.expr1 = expr1;
+			this.expr2 = expr2;
+			this.expr3 = expr3;
+       }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitDefaultArray(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("arrref");
+    		pw.incIndent();
+    		expr1.printTo(pw);
+    		expr2.printTo(pw);
+    		pw.println("default");
+    		pw.incIndent();
+    		expr3.printTo(pw);
+    		pw.decIndent();
+    		pw.decIndent();
+    	}
+    }
+    
+    public static class CompArray extends Expr {
+
+    	public Expr expr1;
+    	public Expr expr2;
+	    public Expr expr3;
+	    public String name;
+
+        public CompArray(Expr expr1, String name, Expr expr2, Expr expr3, Location loc) {
+            super(COMPARRAY, loc);
+    		this.expr1 = expr1;
+    		this.name = name;
+			this.expr2 = expr2;
+			this.expr3 = expr3;
+       }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitCompArray(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("array comp");
+    		pw.incIndent();
+    		pw.println("varbind " + name);
+    		expr2.printTo(pw);
+    		if(expr3 != null) {
+    			expr3.printTo(pw);
+    		}
+    		else {
+    			pw.println("boolconst true");
+    		}
+    		expr1.printTo(pw);
+    		pw.decIndent();
+    	}
+    }
+    
+    
+    public static class ForeachArray extends Expr {
+
+    	public Expr expr1;
+    	public Expr expr2;
+	    public VarBind varbind;
+	    public Tree stmt;
+
+        public ForeachArray(VarBind varbind, Expr expr1, Expr expr2, Tree stmt, Location loc) {
+            super(FOREACHARRAY, loc);
+    		this.varbind = varbind;
+    		this.expr1 = expr1;
+    		this.expr2 = expr2;
+			this.stmt = stmt;
+       }
+
+    	@Override
+        public void accept(Visitor v) {
+            v.visitForeachArray(this);
+        }
+
+    	@Override
+    	public void printTo(IndentPrintWriter pw) {
+    		pw.println("foreach");
+    		pw.incIndent();
+    		varbind.printTo(pw);
+    		expr1.printTo(pw);
+    		if(expr2 != null) {
+    			expr2.printTo(pw);
+    		}
+    		else {
+    			pw.println("boolconst true");
+    		}
+    		stmt.printTo(pw);
+    		pw.decIndent();
+    	}
+    }
+    
+    
 
     /**
       * A generic visitor class for trees.
@@ -1470,6 +1887,62 @@ public abstract class Tree {
         public void visitTypeArray(TypeArray that) {
             visitTree(that);
         }
+        
+        
+        public void visitVarBind(VarBind that){
+            visitTree(that);
+        }
+        
+        
+        public void visitSCopyExpr(SCopyExpr that) {
+            visitTree(that);
+        }
+        
+        public void visitSealed(Sealed that) {
+            visitTree(that);
+        }
+        
+        public void visitGuarded(Guarded that){
+            visitTree(that);
+        }
+        
+        public void visitIfSubStmt(IfSubStmt that){
+            visitTree(that);
+        }
+         
+        public void visitVar(Var that){
+             visitTree(that);
+        }
+        
+        public void visitArrayConstant(ArrayConstant that){
+            visitTree(that);
+        }
+        
+        public void visitNewSameArray(NewSameArray that){
+            visitTree(that);
+        }
+        
+        public void visitJointArray(JointArray that){
+            visitTree(that);
+        }
+        
+        public void visitAccessArray(AccessArray that){
+            visitTree(that);
+        }
+        
+        public void visitDefaultArray(DefaultArray that){
+            visitTree(that);
+        }
+        
+        public void visitCompArray(CompArray that){
+            visitTree(that);
+        }
+        
+        public void visitForeachArray(ForeachArray that){
+            visitTree(that);
+        }
+        
+        
 
         public void visitTree(Tree that) {
             assert false;

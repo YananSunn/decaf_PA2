@@ -21,6 +21,8 @@ public class Class extends Symbol {
 	private int numVar;
 
 	private int size;
+	
+	private boolean sealed;
 
 	public int getSize() {
 		return size;
@@ -52,6 +54,7 @@ public class Class extends Symbol {
 		this.location = location;
 		this.order = -1;
 		this.check = false;
+		this.sealed = false;
 		this.numNonStaticFunc = -1;
 		this.numVar = -1;
 		this.associatedScope = new ClassScope(this);
@@ -122,6 +125,14 @@ public class Class extends Symbol {
 
 	public void setCheck(boolean check) {
 		this.check = check;
+	}
+	
+	public boolean isSealed() {
+		return sealed;
+	}
+
+	public void setSealed(boolean sealed) {
+		this.sealed = sealed;
 	}
 
 	@Override
