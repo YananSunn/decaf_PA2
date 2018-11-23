@@ -605,6 +605,35 @@ public class TypeCheck extends Tree.Visitor {
 	
 	
 	
+	public void visitGuarded(Tree.Guarded guarded)
+    {
+		if (guarded.subStmt != null)
+	    {
+	        for (Tree branch : guarded.subStmt)
+	            branch.accept(this);
+	    }
+	    if (guarded.last != null)
+	    {
+	    	guarded.last.accept(this);
+	    }
+    }
+	
+	public void visitIfSubStmt(Tree.IfSubStmt ifSubStmt)
+    {
+		ifSubStmt.expr.accept(this);
+		
+		if (!ifSubStmt.expr.type.equal(BaseType.ERROR) && !ifSubStmt.expr.type.equal(BaseType.BOOL))
+        {
+            issueError(new BadTestExpr(ifSubStmt.getLocation()));
+        }
+
+//	        if (ifSubStmt.stmt != null)
+//	        {
+//	        	ifSubStmt.stmt.accept(this);
+//	        }
+
+    }
+
 	
 	
 	
@@ -672,8 +701,7 @@ public class TypeCheck extends Tree.Visitor {
 		}
 
 		if (!compatible) {
-			issueError(new IncompatBinOpError(location, left.type.toString(),
-					Parser.opStr(op), right.type.toString()));
+			issueError(new IncompatBinOpError(location, left.type.toString(), Parser.opStr(op), right.type.toString()));
 		}
 		return returnType;
 	}

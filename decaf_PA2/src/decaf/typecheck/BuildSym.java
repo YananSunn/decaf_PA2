@@ -73,8 +73,11 @@ public class BuildSym extends Tree.Visitor {
 				issueError(new BadInheritanceError(cd.getLocation()));
 				c.dettachParent();
 			}
-			if(cd.parent != null && c.getParent().isSealed() == true) {
-				issueError(new BadSealedInherError(cd.getLocation()));
+			if(cd.parent != null && c.getParent() != null) {
+				if(c.getParent().isSealed() == true)
+				{
+					issueError(new BadSealedInherError(cd.getLocation()));
+				}
 			}
 		}
 
