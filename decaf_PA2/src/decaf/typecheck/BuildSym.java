@@ -5,14 +5,17 @@ import java.util.Iterator;
 import decaf.Driver;
 import decaf.tree.Tree;
 import decaf.tree.Tree.Sealed;
+import decaf.tree.Tree.Var;
 import decaf.error.BadArrElementError;
 import decaf.error.BadInheritanceError;
 import decaf.error.BadOverrideError;
 import decaf.error.BadSealedInherError;
+import decaf.error.BadTestExpr;
 import decaf.error.BadVarTypeError;
 import decaf.error.ClassNotFoundError;
 import decaf.error.DecafError;
 import decaf.error.DeclConflictError;
+import decaf.error.IncompatBinOpError;
 import decaf.error.NoMainClassError;
 import decaf.error.OverridingVarError;
 import decaf.scope.ClassScope;
@@ -138,6 +141,7 @@ public class BuildSym extends Tree.Visitor {
 		Symbol sym = table.lookup(varDef.name, true);
 		if (sym != null) {
 			if (table.getCurrentScope().equals(sym.getScope())) {
+				
 				issueError(new DeclConflictError(v.getLocation(), v.getName(),
 						sym.getLocation()));
 			} else if ((sym.getScope().isFormalScope() && table.getCurrentScope().isLocalScope() && ((LocalScope)table.getCurrentScope()).isCombinedtoFormal() )) {
@@ -236,6 +240,21 @@ public class BuildSym extends Tree.Visitor {
 		table.close();
 	}
 
+	
+	public void visitAssign(Tree.Assign assign) {
+		
+//		assign.expr.accept(this);
+		boolean isVar = assign.left instanceof Var;
+		if(isVar) {
+			assign.left.accept(this);
+		}
+	}
+	
+	public void visitVar(Tree.Var var)
+    {
+		var.vardef.accept(this);
+    }
+	
 	@Override
 	public void visitForLoop(Tree.ForLoop forLoop) {
 		if (forLoop.loopBody != null) {

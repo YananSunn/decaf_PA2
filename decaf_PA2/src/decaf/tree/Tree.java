@@ -326,6 +326,7 @@ public abstract class Tree {
     public static final int INT = VOID + 1; 
     public static final int BOOL = INT + 1; 
     public static final int STRING = BOOL + 1; 
+    public static final int UNKNOWN = STRING + 1; 
     
     
 
@@ -1508,10 +1509,12 @@ public static class VarBind extends Tree{
     
     public static class Var extends LValue {
     	public String name;
-
+    	public VarDef vardef;
+    	
         public Var(String name, Location loc) {
             super(VARSTMT, loc);
     		this.name = name;
+    		vardef= new VarDef(name, new TypeIdent(Tree.UNKNOWN, loc), loc);
         }
 
     	@Override

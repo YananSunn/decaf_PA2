@@ -10,6 +10,7 @@ import decaf.tree.Tree;
 import decaf.error.BadArgCountError;
 import decaf.error.BadArgTypeError;
 import decaf.error.BadArrElementError;
+import decaf.error.BadArrIndexError;
 import decaf.error.BadLengthArgError;
 import decaf.error.BadLengthError;
 import decaf.error.BadNewArrayLength;
@@ -33,6 +34,7 @@ import decaf.error.RefNonStaticError;
 import decaf.error.SubNotIntError;
 import decaf.error.ThisInStaticFuncError;
 import decaf.error.UndeclVarError;
+import decaf.error.UntermStrError;
 import decaf.frontend.Parser;
 import decaf.scope.ClassScope;
 import decaf.scope.FormalScope;
@@ -441,13 +443,32 @@ public class TypeCheck extends Tree.Visitor {
 	public void visitAssign(Tree.Assign assign) {
 		assign.left.accept(this);
 		assign.expr.accept(this);
-		if (!assign.left.type.equal(BaseType.ERROR)
-				&& (assign.left.type.isFuncType() || !assign.expr.type
-						.compatible(assign.left.type))) {
-			issueError(new IncompatBinOpError(assign.getLocation(),
-					assign.left.type.toString(), "=", assign.expr.type
-							.toString()));
+
+		if(assign.left.type.equal(BaseType.UNKNOWN)) {
+			assign.left.type = assign.expr.type;
 		}
+		
+		if (!assign.left.type.equal(BaseType.ERROR)){
+		    if (assign.expr.tag == Tree.NEWSAMEARRAY){
+		    	if (assign.left.type.isFuncType()) {
+		    		issueError(new IncompatBinOpError(assign.getLocation(),assign.left.type.toString(), "=", assign.expr.type.toString()));
+		    	}
+		    } 
+		    else if (assign.left.type.isFuncType() || !assign.expr.type.compatible(assign.left.type))
+		    {
+		    	issueError(new IncompatBinOpError(assign.getLocation(),
+		            assign.left.type.toString(), "=", assign.expr.type
+		                .toString()));
+		    }
+		}
+		 
+//			if (!assign.left.type.equal(BaseType.ERROR)
+//			&& (assign.left.type.isFuncType() 
+//					|| !assign.expr.type.compatible(assign.left.type))) {
+//		issueError(new IncompatBinOpError(assign.getLocation(),
+//				assign.left.type.toString(), "=", assign.expr.type
+//						.toString()));
+//	}
 	}
 
 	@Override
@@ -634,7 +655,47 @@ public class TypeCheck extends Tree.Visitor {
 
     }
 
+	public void visitVar(Tree.Var var)
+    {
+		var.type = BaseType.UNKNOWN;
+    }
 	
+	public void visitNewSameArray(Tree.NewSameArray newSameArray)
+    {
+		newSameArray.expr.accept(this);
+        if(newSameArray.expr.type != null) {
+        	if(!(newSameArray.expr.type.isArrayType())
+        			&& !(newSameArray.expr.type.equal(BaseType.INT))
+        			&& !(newSameArray.expr.type.equal(BaseType.BOOL))
+        			&& !(newSameArray.expr.type.equal(BaseType.STRING)))
+        	{
+        		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
+        	}
+        }
+        
+        newSameArray.newsamearray.accept(this);
+        if(newSameArray.newsamearray.type != null) {
+        	if(!newSameArray.newsamearray.type.equal(BaseType.INT)) {
+        		issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));
+        	}
+        }
+        
+//        if(newSameArray.expr.type.isArrayType()) {
+//        	newSameArray.expr.accept(this);
+//        }
+//        else {
+//        	issueError(new BadArrElementError(newSameArray.expr.getLocation()));
+//        	
+//        }
+//        
+//        if(!newSameArray.newsamearray.type.equal(BaseType.INT)) {
+//        	
+//        	issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));
+//        }
+//        else {
+//        	newSameArray.newsamearray.accept(this);
+//        }
+    }
 	
 	
 	
