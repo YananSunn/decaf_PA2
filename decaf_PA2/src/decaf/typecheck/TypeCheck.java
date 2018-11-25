@@ -7,15 +7,21 @@ import java.util.Stack;
 import decaf.Driver;
 import decaf.Location;
 import decaf.tree.Tree;
+import decaf.tree.Tree.Block;
 import decaf.tree.Tree.DefaultArray;
+import decaf.tree.Tree.Expr;
+import decaf.tree.Tree.ForeachArray;
 import decaf.tree.Tree.NewArray;
+import decaf.tree.Tree.TypeLiteral;
 import decaf.tree.Tree.Var;
+import decaf.tree.Tree.VarBind;
 import decaf.error.BadArgCountError;
 import decaf.error.BadArgTypeError;
 import decaf.error.BadArrElementError;
 import decaf.error.BadArrIndexError;
 import decaf.error.BadArrOperArgError;
 import decaf.error.BadDefError;
+import decaf.error.BadForeachTypeError;
 import decaf.error.BadLengthArgError;
 import decaf.error.BadLengthError;
 import decaf.error.BadNewArrayLength;
@@ -43,6 +49,7 @@ import decaf.error.UntermStrError;
 import decaf.frontend.Parser;
 import decaf.scope.ClassScope;
 import decaf.scope.FormalScope;
+import decaf.scope.LocalScope;
 import decaf.scope.Scope;
 import decaf.scope.ScopeStack;
 import decaf.scope.Scope.Kind;
@@ -474,15 +481,6 @@ public class TypeCheck extends Tree.Visitor {
 		                .toString()));
 		    }
 		}
-		
-		 
-//			if (!assign.left.type.equal(BaseType.ERROR)
-//			&& (assign.left.type.isFuncType() 
-//					|| !assign.expr.type.compatible(assign.left.type))) {
-//		issueError(new IncompatBinOpError(assign.getLocation(),
-//				assign.left.type.toString(), "=", assign.expr.type
-//						.toString()));
-//	}
 	}
 
 	@Override
@@ -618,22 +616,23 @@ public class TypeCheck extends Tree.Visitor {
         if (identSymbol == null)
         {
             issueError(new UndeclVarError(sCopyExpr.getLocation(), sCopyExpr.ident));
-            if(sCopyExpr.expr.type.isClassType() == false) {
+            sCopyExpr.type = BaseType.ERROR;
+            if(!sCopyExpr.expr.type.equal(BaseType.ERROR) && !sCopyExpr.expr.type.isClassType()) {
             	issueError(new BadScopyArgError(sCopyExpr.expr.getLocation(), "src", sCopyExpr.expr.type.toString()));
             	sCopyExpr.type = BaseType.ERROR;
             }
         }
         else {
         	Type identType = table.lookup(sCopyExpr.ident, true).getType();
-        	if(identType.isClassType() == false) {
+        	if(!identType.equal(BaseType.ERROR) && !identType.isClassType()) {
         		issueError(new BadScopyArgError(sCopyExpr.getLocation(), "dst", identType.toString()));
-        		if(sCopyExpr.expr.type.isClassType() == false) {
+        		if(!sCopyExpr.expr.type.equal(BaseType.ERROR) && !sCopyExpr.expr.type.isClassType()) {
                 	issueError(new BadScopyArgError(sCopyExpr.expr.getLocation(), "src", sCopyExpr.expr.type.toString()));
                 	sCopyExpr.type = BaseType.ERROR;
         		}
         	}
         	else {
-        		if(!identType.equal(sCopyExpr.expr.type)) {
+        		if(!identType.equal(BaseType.ERROR) && !identType.equal(sCopyExpr.expr.type)) {
         			issueError(new BadScopySrcError(sCopyExpr.getLocation(), identType.toString(), sCopyExpr.expr.type.toString()));
         			sCopyExpr.type = BaseType.ERROR;
         		}
@@ -683,56 +682,104 @@ public class TypeCheck extends Tree.Visitor {
 		newSameArray.expr.accept(this);
 		newSameArray.newsamearray.accept(this);
 		
-        if(newSameArray.expr.type != null) {
-        	 newSameArray.type = new ArrayType(newSameArray.expr.type);
-        	if(newSameArray.expr.type.equal(BaseType.VOID))
-        	{
-        		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
-        		newSameArray.type = BaseType.ERROR;
-        	}
-        	if(newSameArray.expr.type.equal(BaseType.UNKNOWN))
-        	{
-        		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
-        		newSameArray.type = BaseType.ERROR;
-        	}
-        }
+    	newSameArray.type = new ArrayType(newSameArray.expr.type);
+    	if(newSameArray.expr.type.equal(BaseType.VOID))
+    	{
+    		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
+    		newSameArray.type = BaseType.ERROR;
+    	}
+    	if(newSameArray.expr.type.equal(BaseType.UNKNOWN))
+    	{
+    		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
+    		newSameArray.type = BaseType.ERROR;
+    	}
         
-        
-        if(newSameArray.newsamearray.type != null) {
-        	if(!newSameArray.newsamearray.type.equal(BaseType.INT)) {
-        		issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));  
-        		newSameArray.type = BaseType.ERROR;
-        	}
-        }
-        
+    	if(!newSameArray.newsamearray.type.equal(BaseType.ERROR) && !newSameArray.newsamearray.type.equal(BaseType.INT)) {
+    		issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));  
+    		newSameArray.type = BaseType.ERROR;
+    	}
     }
 	
 	public void visitDefaultArray(DefaultArray defaultArray){
 		defaultArray.expr1.accept(this);
 		defaultArray.expr2.accept(this);
 		defaultArray.expr3.accept(this);
-		if(!defaultArray.expr2.type.equal(BaseType.INT)) {
+		if(!defaultArray.expr2.type.equal(BaseType.ERROR) && !defaultArray.expr2.type.equal(BaseType.INT)) {
 			issueError(new BadArrIndexError(defaultArray.expr2.getLocation()));
 		}
-		if(!defaultArray.expr1.type.isArrayType()) {
-			
-			if(!defaultArray.expr3.type.isArrayType()) {
+		if(!defaultArray.expr1.type.equal(BaseType.ERROR) && !defaultArray.expr1.type.isArrayType()) {
+			if(!defaultArray.expr3.type.equal(BaseType.ERROR) && !defaultArray.expr3.type.isArrayType()) {
 				issueError(new BadArrOperArgError(defaultArray.expr1.getLocation()));
 				defaultArray.type = BaseType.ERROR;
-//				issueError(new UntermStrError(defaultArray.getLocation(), "this is visitdefault1" + defaultArray.type.toString()));
 			}
 			else {
 				defaultArray.type = defaultArray.expr2.type;
-//				issueError(new UntermStrError(defaultArray.getLocation(), "this is visitdefault2" + defaultArray.type.toString()));
 			}
 		}
 		else {
-			if(!((ArrayType)(defaultArray.expr1.type)).getElementType().equal(defaultArray.expr3.type)){
+			if(!((ArrayType)(defaultArray.expr1.type)).getElementType().equal(BaseType.ERROR) && !((ArrayType)(defaultArray.expr1.type)).getElementType().equal(defaultArray.expr3.type)){
 				issueError(new BadDefError(defaultArray.expr2.getLocation(), ((ArrayType)(defaultArray.expr1.type)).getElementType().toString(), defaultArray.expr3.type.toString()));
 			}
 			defaultArray.type = ((ArrayType)(defaultArray.expr1.type)).getElementType();
-//			issueError(new UntermStrError(defaultArray.getLocation(), "this is visitdefault3" + defaultArray.type.toString()));
 		}  
+	}
+	
+	public void visitForeachArray(ForeachArray foreachArray){
+		foreachArray.varbind.accept(this);
+		foreachArray.expr1.accept(this);
+		foreachArray.expr2.accept(this);	
+		if(foreachArray.varbind.type.equal(BaseType.UNKNOWN)) {
+			if(!foreachArray.expr1.type.equal(BaseType.ERROR)) {
+				if(!foreachArray.expr1.type.isArrayType()) {
+					issueError(new BadArrOperArgError(foreachArray.expr1.getLocation()));
+					foreachArray.varbind.type = BaseType.ERROR;
+				}
+				else {
+					table.open(foreachArray.associatedScope);
+					Symbol sym = new Variable(foreachArray.varbind.name, ((ArrayType)foreachArray.expr1.type).getElementType(), foreachArray.varbind.getLocation());
+					foreachArray.associatedScope.declare(sym);
+					foreachArray.varbind.type = ((ArrayType)foreachArray.expr1.type).getElementType();
+					for (Tree s : ((Block)(foreachArray.stmt)).block) {
+						breaks.add(s);
+						s.accept(this);
+						breaks.pop();
+					}
+					table.close();
+				}
+			}
+			if(!foreachArray.expr2.type.equal(BaseType.ERROR) && !foreachArray.expr2.type.equal(BaseType.BOOL)) {
+				issueError(new BadTestExpr(foreachArray.expr2.getLocation()));
+			}
+		}
+		else {
+			if(!foreachArray.expr1.type.equal(BaseType.ERROR)) {
+				if(!foreachArray.expr1.type.isArrayType()) {
+					issueError(new BadArrOperArgError(foreachArray.expr1.getLocation()));
+					foreachArray.varbind.type = BaseType.ERROR;
+				}
+				else {
+					if(((ArrayType)foreachArray.expr1.type).getElementType().compatible(foreachArray.varbind.type)) {
+					}
+					else {
+						issueError(new BadForeachTypeError(foreachArray.getLocation(), foreachArray.varbind.type.toString(), foreachArray.expr1.type.toString()));	
+					}
+				}	
+			}
+			
+			if(!foreachArray.expr2.type.equal(BaseType.ERROR) && !foreachArray.expr2.type.equal(BaseType.BOOL)) {
+				issueError(new BadTestExpr(foreachArray.expr2.getLocation()));
+			}
+		}
+	}
+	
+	public void visitVarBind(VarBind varBind){
+		if(varBind.typeee == null) {
+			varBind.type = BaseType.UNKNOWN;		
+		}
+		else {
+			varBind.typeee.accept(this);
+			varBind.type = varBind.typeee.type;
+		}
 	}
 	
 	private void issueError(DecafError error) {

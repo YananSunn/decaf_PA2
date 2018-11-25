@@ -1371,12 +1371,12 @@ public abstract class Tree {
     
 public static class VarBind extends Tree{
     	
-    	public TypeLiteral type;
+    	public TypeLiteral typeee;
     	public String name;
     	
-    	public VarBind(TypeLiteral type, String name, Location loc) {
+    	public VarBind(TypeLiteral typeee, String name, Location loc) {
     		super(VARBIND, loc);
-    		this.type = type;
+    		this.typeee = typeee;
     		this.name = name;
     	}
     	
@@ -1388,8 +1388,8 @@ public static class VarBind extends Tree{
     	@Override
     	public void printTo(IndentPrintWriter pw) {
     		pw.print("varbind " + name + " ");
-    		if(type != null) {
-    			type.printTo(pw);
+    		if(typeee != null) {
+    			typeee.printTo(pw);
     			pw.println();
     		}
     		else {
@@ -1717,6 +1717,7 @@ public static class VarBind extends Tree{
     	public Expr expr2;
 	    public VarBind varbind;
 	    public Tree stmt;
+	    public LocalScope associatedScope;
 
         public ForeachArray(VarBind varbind, Expr expr1, Expr expr2, Tree stmt, Location loc) {
             super(FOREACHARRAY, loc);

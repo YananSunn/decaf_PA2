@@ -70,7 +70,7 @@ public abstract class Symbol {
 	public String getName() {
 		return name;
 	}
-
+	
 	public abstract boolean isVariable();
 
 	public abstract boolean isClass();

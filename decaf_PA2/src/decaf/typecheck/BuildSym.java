@@ -3,10 +3,14 @@ package decaf.typecheck;
 import java.util.Iterator;
 
 import decaf.Driver;
+import decaf.Location;
 import decaf.tree.Tree;
+import decaf.tree.Tree.Block;
+import decaf.tree.Tree.ForeachArray;
 import decaf.tree.Tree.Sealed;
 import decaf.tree.Tree.Var;
 import decaf.error.BadArrElementError;
+import decaf.error.BadArrOperArgError;
 import decaf.error.BadInheritanceError;
 import decaf.error.BadOverrideError;
 import decaf.error.BadSealedInherError;
@@ -116,14 +120,36 @@ public class BuildSym extends Tree.Visitor {
 		}
 		table.close();
 	}
-
-	public void visitSealed(Tree.Sealed sealed) {
-		table.open(sealed.symbol.getAssociatedScope());
-		for (Tree f : sealed.fields) {
-			f.accept(this);
+	
+	public void visitForeachArray(ForeachArray foreachArray){
+		
+		if(foreachArray.stmt instanceof Block) {
+			foreachArray.associatedScope = new LocalScope((Block)(foreachArray.stmt));
 		}
+		else {
+			foreachArray.associatedScope = new LocalScope(new Block(null, new Location(0,0)));
+		}
+		table.open(foreachArray.associatedScope);	
+		Symbol sym = new Variable(foreachArray.varbind.name, foreachArray.varbind.type, foreachArray.varbind.getLocation());
+		foreachArray.associatedScope.declare(sym);
+		foreachArray.varbind.accept(this);
+		foreachArray.expr1.accept(this);
+		foreachArray.expr2.accept(this);
+	
+		for (Tree s : ((Block)(foreachArray.stmt)).block) {
+			s.accept(this);
+		}
+		
 		table.close();
 	}
+
+//	public void visitSealed(Tree.Sealed sealed) {
+//		table.open(sealed.symbol.getAssociatedScope());
+//		for (Tree f : sealed.fields) {
+//			f.accept(this);
+//		}
+//		table.close();
+//	}
 	
 	
 	@Override
