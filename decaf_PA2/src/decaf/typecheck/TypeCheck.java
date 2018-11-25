@@ -7,10 +7,15 @@ import java.util.Stack;
 import decaf.Driver;
 import decaf.Location;
 import decaf.tree.Tree;
+import decaf.tree.Tree.DefaultArray;
+import decaf.tree.Tree.NewArray;
+import decaf.tree.Tree.Var;
 import decaf.error.BadArgCountError;
 import decaf.error.BadArgTypeError;
 import decaf.error.BadArrElementError;
 import decaf.error.BadArrIndexError;
+import decaf.error.BadArrOperArgError;
+import decaf.error.BadDefError;
 import decaf.error.BadLengthArgError;
 import decaf.error.BadLengthError;
 import decaf.error.BadNewArrayLength;
@@ -443,14 +448,22 @@ public class TypeCheck extends Tree.Visitor {
 	public void visitAssign(Tree.Assign assign) {
 		assign.left.accept(this);
 		assign.expr.accept(this);
-
+		
 		if(assign.left.type.equal(BaseType.UNKNOWN)) {
-			assign.left.type = assign.expr.type;
+			if(assign.left instanceof Var) {
+				Symbol sym = table.lookup(((Var)assign.left).name, true);
+				Scope sco = sym.getScope();
+				sco.cancel(sym);
+				sym.setType(assign.expr.type);
+				sco.declare(sym);
+				assign.left.type = assign.expr.type;
+			}
+			
 		}
 		
 		if (!assign.left.type.equal(BaseType.ERROR)){
 		    if (assign.expr.tag == Tree.NEWSAMEARRAY){
-		    	if (assign.left.type.isFuncType()) {
+		    	if (assign.left.type.isFuncType() || !assign.expr.type.compatible(assign.left.type)) {
 		    		issueError(new IncompatBinOpError(assign.getLocation(),assign.left.type.toString(), "=", assign.expr.type.toString()));
 		    	}
 		    } 
@@ -461,6 +474,7 @@ public class TypeCheck extends Tree.Visitor {
 		                .toString()));
 		    }
 		}
+		
 		 
 //			if (!assign.left.type.equal(BaseType.ERROR)
 //			&& (assign.left.type.isFuncType() 
@@ -606,6 +620,7 @@ public class TypeCheck extends Tree.Visitor {
             issueError(new UndeclVarError(sCopyExpr.getLocation(), sCopyExpr.ident));
             if(sCopyExpr.expr.type.isClassType() == false) {
             	issueError(new BadScopyArgError(sCopyExpr.expr.getLocation(), "src", sCopyExpr.expr.type.toString()));
+            	sCopyExpr.type = BaseType.ERROR;
             }
         }
         else {
@@ -614,11 +629,13 @@ public class TypeCheck extends Tree.Visitor {
         		issueError(new BadScopyArgError(sCopyExpr.getLocation(), "dst", identType.toString()));
         		if(sCopyExpr.expr.type.isClassType() == false) {
                 	issueError(new BadScopyArgError(sCopyExpr.expr.getLocation(), "src", sCopyExpr.expr.type.toString()));
-                }
+                	sCopyExpr.type = BaseType.ERROR;
+        		}
         	}
         	else {
         		if(!identType.equal(sCopyExpr.expr.type)) {
         			issueError(new BadScopySrcError(sCopyExpr.getLocation(), identType.toString(), sCopyExpr.expr.type.toString()));
+        			sCopyExpr.type = BaseType.ERROR;
         		}
         	}
         }
@@ -646,6 +663,7 @@ public class TypeCheck extends Tree.Visitor {
 		if (!ifSubStmt.expr.type.equal(BaseType.ERROR) && !ifSubStmt.expr.type.equal(BaseType.BOOL))
         {
             issueError(new BadTestExpr(ifSubStmt.getLocation()));
+            ifSubStmt.type = BaseType.ERROR;
         }
 
 //	        if (ifSubStmt.stmt != null)
@@ -663,41 +681,59 @@ public class TypeCheck extends Tree.Visitor {
 	public void visitNewSameArray(Tree.NewSameArray newSameArray)
     {
 		newSameArray.expr.accept(this);
+		newSameArray.newsamearray.accept(this);
+		
         if(newSameArray.expr.type != null) {
-        	if(!(newSameArray.expr.type.isArrayType())
-        			&& !(newSameArray.expr.type.equal(BaseType.INT))
-        			&& !(newSameArray.expr.type.equal(BaseType.BOOL))
-        			&& !(newSameArray.expr.type.equal(BaseType.STRING)))
+        	 newSameArray.type = new ArrayType(newSameArray.expr.type);
+        	if(newSameArray.expr.type.equal(BaseType.VOID))
         	{
         		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
+        		newSameArray.type = BaseType.ERROR;
+        	}
+        	if(newSameArray.expr.type.equal(BaseType.UNKNOWN))
+        	{
+        		issueError(new BadArrElementError(newSameArray.expr.getLocation()));
+        		newSameArray.type = BaseType.ERROR;
         	}
         }
         
-        newSameArray.newsamearray.accept(this);
+        
         if(newSameArray.newsamearray.type != null) {
         	if(!newSameArray.newsamearray.type.equal(BaseType.INT)) {
-        		issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));
+        		issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));  
+        		newSameArray.type = BaseType.ERROR;
         	}
         }
         
-//        if(newSameArray.expr.type.isArrayType()) {
-//        	newSameArray.expr.accept(this);
-//        }
-//        else {
-//        	issueError(new BadArrElementError(newSameArray.expr.getLocation()));
-//        	
-//        }
-//        
-//        if(!newSameArray.newsamearray.type.equal(BaseType.INT)) {
-//        	
-//        	issueError(new BadArrIndexError(newSameArray.newsamearray.getLocation()));
-//        }
-//        else {
-//        	newSameArray.newsamearray.accept(this);
-//        }
     }
 	
-	
+	public void visitDefaultArray(DefaultArray defaultArray){
+		defaultArray.expr1.accept(this);
+		defaultArray.expr2.accept(this);
+		defaultArray.expr3.accept(this);
+		if(!defaultArray.expr2.type.equal(BaseType.INT)) {
+			issueError(new BadArrIndexError(defaultArray.expr2.getLocation()));
+		}
+		if(!defaultArray.expr1.type.isArrayType()) {
+			
+			if(!defaultArray.expr3.type.isArrayType()) {
+				issueError(new BadArrOperArgError(defaultArray.expr1.getLocation()));
+				defaultArray.type = BaseType.ERROR;
+//				issueError(new UntermStrError(defaultArray.getLocation(), "this is visitdefault1" + defaultArray.type.toString()));
+			}
+			else {
+				defaultArray.type = defaultArray.expr2.type;
+//				issueError(new UntermStrError(defaultArray.getLocation(), "this is visitdefault2" + defaultArray.type.toString()));
+			}
+		}
+		else {
+			if(!((ArrayType)(defaultArray.expr1.type)).getElementType().equal(defaultArray.expr3.type)){
+				issueError(new BadDefError(defaultArray.expr2.getLocation(), ((ArrayType)(defaultArray.expr1.type)).getElementType().toString(), defaultArray.expr3.type.toString()));
+			}
+			defaultArray.type = ((ArrayType)(defaultArray.expr1.type)).getElementType();
+//			issueError(new UntermStrError(defaultArray.getLocation(), "this is visitdefault3" + defaultArray.type.toString()));
+		}  
+	}
 	
 	private void issueError(DecafError error) {
 		Driver.getDriver().issueError(error);

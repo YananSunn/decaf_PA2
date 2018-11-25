@@ -1316,7 +1316,7 @@ break;
 case 58:
 //#line 303 "Parser.y"
 {
-                		yyval.lvalue = new Tree.Var(val_peek(0).ident, val_peek(1).loc);
+                		yyval.lvalue = new Tree.Var(val_peek(0).ident, val_peek(0).loc);
                 	}
 break;
 case 59:

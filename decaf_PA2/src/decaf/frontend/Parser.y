@@ -301,7 +301,7 @@ LValue          :	Receiver IDENTIFIER
                 
                 |	VAR IDENTIFIER
                 	{
-                		$$.lvalue = new Tree.Var($2.ident, $1.loc);
+                		$$.lvalue = new Tree.Var($2.ident, $2.loc);
                 	}
                 ;
 
