@@ -148,6 +148,7 @@ public class TypeCheck extends Tree.Visitor {
 		indexed.index.accept(this);
 		if (!indexed.index.type.equal(BaseType.INT)) {
 			issueError(new SubNotIntError(indexed.getLocation()));
+		
 		}
 	}
 
@@ -658,18 +659,15 @@ public class TypeCheck extends Tree.Visitor {
 	public void visitIfSubStmt(Tree.IfSubStmt ifSubStmt)
     {
 		ifSubStmt.expr.accept(this);
-		
 		if (!ifSubStmt.expr.type.equal(BaseType.ERROR) && !ifSubStmt.expr.type.equal(BaseType.BOOL))
         {
             issueError(new BadTestExpr(ifSubStmt.getLocation()));
             ifSubStmt.type = BaseType.ERROR;
         }
-
-//	        if (ifSubStmt.stmt != null)
-//	        {
-//	        	ifSubStmt.stmt.accept(this);
-//	        }
-
+		if (ifSubStmt.stmt != null)
+        {
+        	ifSubStmt.stmt.accept(this);
+        }
     }
 
 	public void visitVar(Tree.Var var)
@@ -727,7 +725,13 @@ public class TypeCheck extends Tree.Visitor {
 	public void visitForeachArray(ForeachArray foreachArray){
 		foreachArray.varbind.accept(this);
 		foreachArray.expr1.accept(this);
-		foreachArray.expr2.accept(this);	
+		
+//		table.open(foreachArray.associatedScope);
+//		Symbol sym = new Variable(foreachArray.varbind.name, ((ArrayType)foreachArray.expr1.type).getElementType(), foreachArray.varbind.getLocation());
+//		foreachArray.associatedScope.declare(sym);
+//		table.declare(sym);
+		
+		
 		if(foreachArray.varbind.type.equal(BaseType.UNKNOWN)) {
 			if(!foreachArray.expr1.type.equal(BaseType.ERROR)) {
 				if(!foreachArray.expr1.type.isArrayType()) {
@@ -737,7 +741,11 @@ public class TypeCheck extends Tree.Visitor {
 				else {
 					table.open(foreachArray.associatedScope);
 					Symbol sym = new Variable(foreachArray.varbind.name, ((ArrayType)foreachArray.expr1.type).getElementType(), foreachArray.varbind.getLocation());
-					foreachArray.associatedScope.declare(sym);
+//					foreachArray.associatedScope.declare(sym);
+					table.declare(sym);
+					if(foreachArray.expr2 != null) {
+						foreachArray.expr2.accept(this);
+					}
 					foreachArray.varbind.type = ((ArrayType)foreachArray.expr1.type).getElementType();
 					for (Tree s : ((Block)(foreachArray.stmt)).block) {
 						breaks.add(s);
@@ -747,8 +755,13 @@ public class TypeCheck extends Tree.Visitor {
 					table.close();
 				}
 			}
-			if(!foreachArray.expr2.type.equal(BaseType.ERROR) && !foreachArray.expr2.type.equal(BaseType.BOOL)) {
-				issueError(new BadTestExpr(foreachArray.expr2.getLocation()));
+			if(foreachArray.expr2 != null) {
+				if(foreachArray.expr2.type == null) {
+					foreachArray.expr2.accept(this);
+				}
+				if(!foreachArray.expr2.type.equal(BaseType.ERROR) && !foreachArray.expr2.type.equal(BaseType.BOOL)) {
+					issueError(new BadTestExpr(foreachArray.expr2.getLocation()));
+				}
 			}
 		}
 		else {
@@ -758,18 +771,36 @@ public class TypeCheck extends Tree.Visitor {
 					foreachArray.varbind.type = BaseType.ERROR;
 				}
 				else {
+					table.open(foreachArray.associatedScope);
+					Symbol sym = new Variable(foreachArray.varbind.name, ((ArrayType)foreachArray.expr1.type).getElementType(), foreachArray.varbind.getLocation());
+//					foreachArray.associatedScope.declare(sym);
+					table.declare(sym);
+					if(foreachArray.expr2 != null) {
+						foreachArray.expr2.accept(this);
+					}
 					if(((ArrayType)foreachArray.expr1.type).getElementType().compatible(foreachArray.varbind.type)) {
+						for (Tree s : ((Block)(foreachArray.stmt)).block) {
+							breaks.add(s);
+							s.accept(this);
+							breaks.pop();
+						}
+						table.close();
 					}
 					else {
 						issueError(new BadForeachTypeError(foreachArray.getLocation(), foreachArray.varbind.type.toString(), foreachArray.expr1.type.toString()));	
 					}
 				}	
 			}
-			
-			if(!foreachArray.expr2.type.equal(BaseType.ERROR) && !foreachArray.expr2.type.equal(BaseType.BOOL)) {
-				issueError(new BadTestExpr(foreachArray.expr2.getLocation()));
+			if(foreachArray.expr2 != null) {
+				if(foreachArray.expr2.type == null) {
+					foreachArray.expr2.accept(this);
+				}
+				if(!foreachArray.expr2.type.equal(BaseType.ERROR) && !foreachArray.expr2.type.equal(BaseType.BOOL)) {
+					issueError(new BadTestExpr(foreachArray.expr2.getLocation()));
+				}
 			}
 		}
+
 	}
 	
 	public void visitVarBind(VarBind varBind){

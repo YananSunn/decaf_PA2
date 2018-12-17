@@ -1399,7 +1399,7 @@ public static class VarBind extends Tree{
     }
 
 
-    public static class SCopyExpr extends Tree {
+    public static class SCopyExpr extends Expr {
 
     	public String ident;
     	public Expr expr;

@@ -121,7 +121,7 @@ public class BuildSym extends Tree.Visitor {
 		table.close();
 	}
 	
-	public void visitForeachArray(ForeachArray foreachArray){
+public void visitForeachArray(ForeachArray foreachArray){
 		
 		if(foreachArray.stmt instanceof Block) {
 			foreachArray.associatedScope = new LocalScope((Block)(foreachArray.stmt));
@@ -131,10 +131,13 @@ public class BuildSym extends Tree.Visitor {
 		}
 		table.open(foreachArray.associatedScope);	
 		Symbol sym = new Variable(foreachArray.varbind.name, foreachArray.varbind.type, foreachArray.varbind.getLocation());
-		foreachArray.associatedScope.declare(sym);
+//		foreachArray.associatedScope.declare(sym);
+		table.declare(sym);
 		foreachArray.varbind.accept(this);
 		foreachArray.expr1.accept(this);
-		foreachArray.expr2.accept(this);
+		if(foreachArray.expr2 != null) {
+			foreachArray.expr2.accept(this);
+		}
 	
 		for (Tree s : ((Block)(foreachArray.stmt)).block) {
 			s.accept(this);
@@ -143,6 +146,7 @@ public class BuildSym extends Tree.Visitor {
 		table.close();
 	}
 
+
 //	public void visitSealed(Tree.Sealed sealed) {
 //		table.open(sealed.symbol.getAssociatedScope());
 //		for (Tree f : sealed.fields) {
@@ -150,6 +154,30 @@ public class BuildSym extends Tree.Visitor {
 //		}
 //		table.close();
 //	}
+	
+	public void visitGuarded(Tree.Guarded guarded)
+    {
+		if (guarded.subStmt != null)
+	    {
+	        for (Tree branch : guarded.subStmt)
+	            branch.accept(this);
+	    }
+	    if (guarded.last != null)
+	    {
+	    	guarded.last.accept(this);
+	    }
+    }
+	
+	public void visitIfSubStmt(Tree.IfSubStmt ifSubStmt)
+    {
+		ifSubStmt.expr.accept(this);
+
+        if (ifSubStmt.stmt != null)
+        {
+        	ifSubStmt.stmt.accept(this);
+        }
+
+    }
 	
 	
 	@Override
@@ -279,6 +307,8 @@ public class BuildSym extends Tree.Visitor {
 	public void visitVar(Tree.Var var)
     {
 		var.vardef.accept(this);
+		Symbol sym = table.lookup(var.name, true);
+		var.vardef.symbol = (Variable) sym;
     }
 	
 	@Override
