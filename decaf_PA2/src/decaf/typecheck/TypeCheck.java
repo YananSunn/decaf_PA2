@@ -747,9 +747,16 @@ public class TypeCheck extends Tree.Visitor {
 						foreachArray.expr2.accept(this);
 					}
 					foreachArray.varbind.type = ((ArrayType)foreachArray.expr1.type).getElementType();
-					for (Tree s : ((Block)(foreachArray.stmt)).block) {
-						breaks.add(s);
-						s.accept(this);
+					if(foreachArray.stmt instanceof Block) {
+						for (Tree s : ((Block)(foreachArray.stmt)).block) {
+							breaks.add(foreachArray);
+							s.accept(this);
+							breaks.pop();
+						}
+					}
+					else {
+						breaks.add(foreachArray);
+						foreachArray.stmt.accept(this);
 						breaks.pop();
 					}
 					table.close();
@@ -779,9 +786,22 @@ public class TypeCheck extends Tree.Visitor {
 						foreachArray.expr2.accept(this);
 					}
 					if(((ArrayType)foreachArray.expr1.type).getElementType().compatible(foreachArray.varbind.type)) {
-						for (Tree s : ((Block)(foreachArray.stmt)).block) {
-							breaks.add(s);
-							s.accept(this);
+//						for (Tree s : ((Block)(foreachArray.stmt)).block) {
+//							breaks.add(s);
+//							s.accept(this);
+//							breaks.pop();
+//						}
+						
+						if(foreachArray.stmt instanceof Block) {
+							for (Tree s : ((Block)(foreachArray.stmt)).block) {
+								breaks.add(foreachArray);
+								s.accept(this);
+								breaks.pop();
+							}
+						}
+						else {
+							breaks.add(foreachArray);
+							foreachArray.stmt.accept(this);
 							breaks.pop();
 						}
 						table.close();
